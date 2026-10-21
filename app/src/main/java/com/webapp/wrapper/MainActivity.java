@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
                     req.setMimeType(mimeType);
                     req.setNotificationVisibility(
                             DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    req.setDestinationInExternalPublicDirectory(Environment.DIRECTORY_DOWNLOADS, name);
+                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
                     DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
                     dm.enqueue(req);
                     Toast.makeText(MainActivity.this, "Downloading " + name, Toast.LENGTH_SHORT).show();
