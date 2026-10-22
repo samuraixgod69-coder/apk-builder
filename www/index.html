@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>GitHub APK Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#0D1117;
+    --surface:#161B22;
+    --surface-2:#1C2129;
+    --border:#30363D;
+    --text:#E6EDF3;
+    --text-muted:#8B949E;
+    --accent:#2EA043;
+    --accent-ink:#04140A;
+    --blue:#58A6FF;
+    --danger:#F85149;
+    --warn:#D29922;
+    --mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans Telugu', sans-serif;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--text); font-family:var(--sans);
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  #app{max-width:520px; margin:0 auto; min-height:100vh; padding:0 18px 40px;}
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 0 14px; border-bottom:1px solid var(--border); margin-bottom:18px;
+  }
+  .htitle-wrap{display:flex; align-items:center; gap:10px;}
+  .logo{
+    width:38px; height:38px; border-radius:9px; background:var(--surface-2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-size:19px;
+  }
+  .htitle{font-size:16px; font-weight:700;}
+  .hsub{font-size:11.5px; color:var(--text-muted); margin-top:1px;}
+  .gear{background:none; border:none; color:var(--text-muted); font-size:20px; padding:6px;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px; margin-bottom:14px;
+  }
+  .card-title{font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-transform:none;}
+
+  .filebox{
+    border:1.5px dashed var(--border); border-radius:10px; padding:20px 14px; text-align:center;
+    color:var(--text-muted); font-size:13.5px;
+  }
+  .filebox.has-file{border-color:var(--blue); color:var(--text); border-style:solid;}
+  .filebox .fname{font-family:var(--mono); font-size:13px; margin-top:4px; word-break:break-all; color:var(--text);}
+  input[type=file]{display:none;}
+
+  .btn{
+    width:100%; background:var(--accent); color:var(--accent-ink); border:none; border-radius:9px;
+    padding:13px; font-weight:700; font-size:14.5px; cursor:pointer; margin-top:12px;
+  }
+  .btn[disabled]{background:var(--surface-2); color:var(--text-muted); cursor:not-allowed;}
+  .btn.ghost{background:transparent; border:1px solid var(--border); color:var(--text);}
+  .btn.blue{background:var(--blue); color:#04131F;}
+
+  .log{
+    font-family:var(--mono); font-size:12px; line-height:1.9; background:var(--bg);
+    border:1px solid var(--border); border-radius:9px; padding:12px 14px; max-height:260px;
+    overflow-y:auto;
+  }
+  .log .line{display:flex; gap:8px; align-items:flex-start;}
+  .log .ic{flex-shrink:0; width:16px;}
+  .log .ok{color:var(--accent);}
+  .log .run{color:var(--blue);}
+  .log .err{color:var(--danger);}
+  .log .pending{color:var(--text-muted);}
+
+  .result{text-align:center; padding:6px 0 2px;}
+  .result .big-ic{font-size:40px; margin-bottom:6px;}
+  .result .msg{font-size:14px; font-weight:700;}
+  .result .sub{font-size:12px; color:var(--text-muted); margin-top:3px; font-family:var(--mono);}
+
+  label.field-label{display:block; font-size:12px; color:var(--text-muted); margin:12px 0 5px;}
+  label.field-label:first-child{margin-top:0;}
+  input, select{
+    width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:14px; font-family:var(--mono);
+  }
+  .hint{font-size:11.5px; color:var(--text-muted); margin-top:5px; line-height:1.5;}
+
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:20; display:none; align-items:flex-end; justify-content:center;}
+  .overlay.open{display:flex;}
+  .sheet{width:100%; max-width:520px; background:var(--surface); border-radius:16px 16px 0 0; padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px)); max-height:88vh; overflow-y:auto;}
+  .sheet-title{font-size:16px; font-weight:700; margin-bottom:4px;}
+  .sheet-sub{font-size:12px; color:var(--text-muted); margin-bottom:14px;}
+  .sheet-actions{display:flex; gap:10px; margin-top:16px;}
+  .sheet-actions .btn{margin-top:0;}
+
+  .badge{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; background:var(--surface-2); color:var(--text-muted); border:1px solid var(--border);}
+  .badge.ready{color:var(--accent); border-color:var(--accent);}
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <div class="htitle-wrap">
+      <div class="logo">🐙</div>
+      <div>
+        <div class="htitle">GitHub APK Builder</div>
+        <div class="hsub" id="repoStatus">Settings లో repo పెట్టండి</div>
+      </div>
+    </div>
+    <button class="gear" onclick="openSettings()">⚙️</button>
+  </header>
+
+  <div class="card">
+    <div class="card-title">1. ఫైల్ ఎంచుకోండి</div>
+    <div class="filebox" id="fileBox" onclick="document.getElementById('fileInput').click()">
+      <div id="fileBoxText">📄 ఇక్కడ నొక్కి ఫైల్ ఎంచుకోండి</div>
+      <div class="fname" id="fileName"></div>
+    </div>
+    <input type="file" id="fileInput" onchange="onFilePicked(event)">
+  </div>
+
+  <div class="card">
+    <div class="card-title">2. App వివరాలు</div>
+    <label class="field-label">App Name</label>
+    <input id="appNameInput" placeholder="My App" style="font-family:var(--sans);">
+    <button class="btn" id="buildBtn" disabled onclick="startBuild()">🚀 APK Build చేయి</button>
+  </div>
+
+  <div class="card" id="logCard" style="display:none;">
+    <div class="card-title">Status</div>
+    <div class="log" id="logArea"></div>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;"></div>
+
+</div>
+
+<!-- settings sheet -->
+<div class="overlay" id="settingsOverlay">
+  <div class="sheet">
+    <div class="sheet-title">⚙️ GitHub Settings</div>
+    <div class="sheet-sub">మీ apk-builder repo వివరాలు — ఒక్కసారి పెడితే save అవుతుంది, phone లోనే ఉంటుంది.</div>
+
+    <label class="field-label">Personal Access Token</label>
+    <input id="tokenInput" type="password" placeholder="ghp_xxxxxxxxxxxx">
+    <div class="hint">GitHub → Settings → Developer settings → Personal access tokens → Generate new (classic) → scopes: <b>repo</b> + <b>workflow</b> select చేయండి.</div>
+
+    <label class="field-label">Repo Owner (username)</label>
+    <input id="ownerInput" placeholder="ఉదా: samuraixgod69-coder">
+
+    <label class="field-label">Repo Name</label>
+    <input id="repoInput" placeholder="ఉదా: apk-builder">
+
+    <label class="field-label">Branch</label>
+    <input id="branchInput" placeholder="main" value="main">
+
+    <div class="sheet-actions">
+      <button class="btn ghost" onclick="closeSettings()">Cancel</button>
+      <button class="btn" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API = 'https://api.github.com';
+var selectedFile = null;
+
+/* ---------------- settings ---------------- */
+function getSettings(){
+  try{ return JSON.parse(localStorage.getItem('gab_settings') || '{}'); }catch(e){ return {}; }
+}
+function setSettings(s){ localStorage.setItem('gab_settings', JSON.stringify(s)); }
+
+function openSettings(){
+  var s = getSettings();
+  document.getElementById('tokenInput').value = s.token || '';
+  document.getElementById('ownerInput').value = s.owner || '';
+  document.getElementById('repoInput').value = s.repo || '';
+  document.getElementById('branchInput').value = s.branch || 'main';
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings(){ document.getElementById('settingsOverlay').classList.remove('open'); }
+function saveSettings(){
+  var s = {
+    token: document.getElementById('tokenInput').value.trim(),
+    owner: document.getElementById('ownerInput').value.trim(),
+    repo: document.getElementById('repoInput').value.trim(),
+    branch: document.getElementById('branchInput').value.trim() || 'main'
+  };
+  setSettings(s);
+  closeSettings();
+  refreshRepoStatus();
+}
+function refreshRepoStatus(){
+  var s = getSettings();
+  var el = document.getElementById('repoStatus');
+  if(s.owner && s.repo){
+    el.textContent = s.owner + '/' + s.repo + ' (' + (s.branch||'main') + ')';
+  } else {
+    el.textContent = 'Settings లో repo పెట్టండి';
+  }
+  updateBuildBtn();
+}
+refreshRepoStatus();
+
+/* ---------------- file pick ---------------- */
+function onFilePicked(e){
+  var f = e.target.files[0];
+  if(!f) return;
+  selectedFile = f;
+  document.getElementById('fileBox').classList.add('has-file');
+  document.getElementById('fileBoxText').textContent = '✅ ఎంచుకున్నారు:';
+  document.getElementById('fileName').textContent = f.name + '  (' + Math.round(f.size/1024) + ' KB)';
+  if(!document.getElementById('appNameInput').value){
+    document.getElementById('appNameInput').value = f.name.replace(/\.[^.]+$/, '');
+  }
+  updateBuildBtn();
+}
+function updateBuildBtn(){
+  var s = getSettings();
+  var ok = selectedFile && s.token && s.owner && s.repo;
+  document.getElementById('buildBtn').disabled = !ok;
+}
+
+/* ---------------- helpers ---------------- */
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function fileToBase64(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(){ resolve(reader.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function ghHeaders(token){
+  return {
+    'Authorization': 'token ' + token,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'Content-Type': 'application/json'
+  };
+}
+
+var logArea, logCard;
+function logLine(icon, cls, text){
+  var row = document.createElement('div');
+  row.className = 'line';
+  row.innerHTML = '<span class="ic '+cls+'">'+icon+'</span><span>'+text+'</span>';
+  logArea.appendChild(row);
+  logArea.scrollTop = logArea.scrollHeight;
+  return row;
+}
+function updateLine(row, icon, cls, text){
+  row.className = 'line';
+  row.innerHTML = '<span class="ic '+cls+'">'+icon+'</span><span>'+text+'</span>';
+}
+
+/* ---------------- main build flow ---------------- */
+async function startBuild(){
+  var s = getSettings();
+  var token = s.token, owner = s.owner, repo = s.repo, branch = s.branch || 'main';
+  var headers = ghHeaders(token);
+  var appName = document.getElementById('appNameInput').value.trim() || 'My App';
+
+  document.getElementById('buildBtn').disabled = true;
+  document.getElementById('resultCard').style.display = 'none';
+  logCard = document.getElementById('logCard');
+  logArea = document.getElementById('logArea');
+  logArea.innerHTML = '';
+  logCard.style.display = 'block';
+
+  try{
+    // 1. figure out target path
+    var fname = selectedFile.name;
+    var isHtml = /\.html?$/i.test(fname);
+    var targetPath = isHtml ? 'www/index.html' : 'www/' + fname;
+
+    var step1 = logLine('⏳','run','పాత www/ ఫైల్స్ తొలగిస్తోంది...');
+    var existing = await listWww(owner, repo, branch, headers);
+    for(var i=0;i<existing.length;i++){
+      var it = existing[i];
+      if(it.type === 'file' && it.name !== '.gitkeep'){
+        await deleteFile(owner, repo, branch, headers, it.path, it.sha);
+      }
+    }
+    updateLine(step1, '✅','ok','పాత ఫైల్స్ క్లియర్ అయ్యాయి');
+
+    // 2. update app.config with app name
+    var step2 = logLine('⏳','run','app.config అప్‌డేట్ చేస్తోంది...');
+    await updateAppConfig(owner, repo, branch, headers, appName);
+    updateLine(step2, '✅','ok','App name సెట్ చేశాను: '+appName);
+
+    // 3. push the file
+    var step3 = logLine('⏳','run', fname + ' repo కి పంపుతోంది...');
+    var base64 = await fileToBase64(selectedFile);
+    var putRes = await putFile(owner, repo, branch, headers, targetPath, base64, 'cm: upload '+fname);
+    var headSha = putRes.commit.sha;
+    updateLine(step3, '✅','ok','ఫైల్ push అయింది (commit '+headSha.slice(0,7)+')');
+
+    // 4. wait for workflow run to appear
+    var step4 = logLine('⏳','run','GitHub Actions build మొదలుపెట్టడం కోసం చూస్తోంది...');
+    var run = await waitForRunStart(owner, repo, headers, headSha);
+    if(!run){ throw new Error('5 నిమిషాల్లో build run కనపడలేదు. Repo లో Actions enable అయ్యుందో చూడండి.'); }
+    updateLine(step4, '✅','ok','Build run మొదలైంది (#'+run.run_number+')');
+
+    // 5. poll until completed
+    var step5 = logLine('⏳','run','Build జరుగుతోంది... (1-3 నిమిషాలు పట్టొచ్చు)');
+    run = await pollUntilDone(owner, repo, headers, run.id, step5);
+    if(run.conclusion !== 'success'){
+      updateLine(step5, '❌','err','Build fail అయింది (status: '+run.conclusion+')');
+      throw new Error('Build fail అయింది. GitHub Actions tab లో run #'+run.run_number+' చూసి error చూడండి: '+run.html_url);
+    }
+    updateLine(step5, '✅','ok','Build విజయవంతం!');
+
+    // 6. get artifact
+    var step6 = logLine('⏳','run','APK డౌన్‌లోడ్ చేస్తోంది...');
+    var artifact = await getFirstArtifact(owner, repo, headers, run.id);
+    if(!artifact){ throw new Error('Artifact దొరకలేదు.'); }
+    var zipBlob = await downloadArtifactZip(owner, repo, headers, artifact.id);
+    updateLine(step6, '✅','ok','Artifact డౌన్‌లోడ్ అయింది ('+Math.round(zipBlob.size/1024)+' KB)');
+
+    // 7. extract apk
+    var step7 = logLine('⏳','run','APK extract చేస్తోంది...');
+    var zip = await JSZip.loadAsync(zipBlob);
+    var apkEntry = null, apkName = '';
+    zip.forEach(function(relPath, entry){
+      if(!apkEntry && relPath.toLowerCase().endsWith('.apk')){ apkEntry = entry; apkName = relPath; }
+    });
+    if(!apkEntry){ throw new Error('Artifact లో .apk file దొరకలేదు.'); }
+    var apkBlob = await apkEntry.async('blob');
+    updateLine(step7, '✅','ok','APK సిద్ధం: '+apkName);
+
+    // 8. offer download
+    showResult(true, apkBlob, apkName);
+
+  } catch(err){
+    showResult(false, null, null, err.message || String(err));
+  } finally {
+    updateBuildBtn();
+  }
+}
+
+function showResult(success, blob, name, errMsg){
+  var card = document.getElementById('resultCard');
+  card.style.display = 'block';
+  if(success){
+    var url = URL.createObjectURL(blob);
+    card.innerHTML =
+      '<div class="result">'+
+        '<div class="big-ic">🎉</div>'+
+        '<div class="msg">APK సిద్ధంగా ఉంది!</div>'+
+        '<div class="sub">'+name+' · '+Math.round(blob.size/1024)+' KB</div>'+
+      '</div>'+
+      '<a href="'+url+'" download="'+name+'" class="btn blue" style="display:block; text-align:center; text-decoration:none;">⬇️ APK Download చేయి</a>';
+  } else {
+    card.innerHTML =
+      '<div class="result">'+
+        '<div class="big-ic">⚠️</div>'+
+        '<div class="msg" style="color:var(--danger);">Build పూర్తి కాలేదు</div>'+
+        '<div class="sub" style="font-family:var(--sans); white-space:normal;">'+errMsg+'</div>'+
+      '</div>';
+  }
+}
+
+/* ---------------- GitHub API calls ---------------- */
+async function listWww(owner, repo, branch, headers){
+  var res = await fetch(API+'/repos/'+owner+'/'+repo+'/contents/www?ref='+branch, {headers: headers});
+  if(res.status === 404) return [];
+  if(!res.ok) return [];
+  return await res.json();
+}
+async function deleteFile(owner, repo, branch, headers, path, sha){
+  await fetch(API+'/repos/'+owner+'/'+repo+'/contents/'+path, {
+    method:'DELETE', headers: headers,
+    body: JSON.stringify({message:'cm: clear old file', sha: sha, branch: branch})
+  });
+}
+async function getFile(owner, repo, branch, headers, path){
+  var res = await fetch(API+'/repos/'+owner+'/'+repo+'/contents/'+path+'?ref='+branch, {headers: headers});
+  if(!res.ok) return null;
+  return await res.json();
+}
+async function putFile(owner, repo, branch, headers, path, base64content, message, sha){
+  var body = {message: message, content: base64content, branch: branch};
+  if(sha) body.sha = sha;
+  var res = await fetch(API+'/repos/'+owner+'/'+repo+'/contents/'+path, {
+    method:'PUT', headers: headers, body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    var t = await res.text();
+    throw new Error('GitHub push fail (' + res.status + '): ' + t.slice(0,200));
+  }
+  return await res.json();
+}
+async function updateAppConfig(owner, repo, branch, headers, appName){
+  var existing = await getFile(owner, repo, branch, headers, 'app.config');
+  var text = existing ? atob(existing.content.replace(/\n/g,'')) : '';
+  var lines = text ? text.split('\n') : ['APP_NAME=My App','PACKAGE_ID=com.webapp.myapp','VERSION=1.0','START_URL='];
+  var found = false;
+  for(var i=0;i<lines.length;i++){
+    if(lines[i].indexOf('APP_NAME=') === 0){ lines[i] = 'APP_NAME='+appName; found = true; }
+  }
+  if(!found) lines.unshift('APP_NAME='+appName);
+  var newContent = btoa(unescape(encodeURIComponent(lines.join('\n'))));
+  await putFile(owner, repo, branch, headers, 'app.config', newContent, 'cm: set app name', existing ? existing.sha : undefined);
+}
+async function waitForRunStart(owner, repo, headers, headSha){
+  for(var i=0;i<20;i++){ // ~100s
+    var res = await fetch(API+'/repos/'+owner+'/'+repo+'/actions/runs?head_sha='+headSha+'&per_page=5', {headers: headers});
+    if(res.ok){
+      var data = await res.json();
+      if(data.workflow_runs && data.workflow_runs.length){ return data.workflow_runs[0]; }
+    }
+    await sleep(5000);
+  }
+  return null;
+}
+async function pollUntilDone(owner, repo, headers, runId, statusLine){
+  var dots = ['.','..','...'];
+  for(var i=0;i<60;i++){ // up to ~6 minutes
+    var res = await fetch(API+'/repos/'+owner+'/'+repo+'/actions/runs/'+runId, {headers: headers});
+    var run = await res.json();
+    if(run.status === 'completed') return run;
+    updateLine(statusLine, '⏳','run','Build జరుగుతోంది ('+run.status+')'+dots[i%3]);
+    await sleep(6000);
+  }
+  throw new Error('Build timeout — GitHub Actions tab లో నేరుగా చూడండి.');
+}
+async function getFirstArtifact(owner, repo, headers, runId){
+  var res = await fetch(API+'/repos/'+owner+'/'+repo+'/actions/runs/'+runId+'/artifacts', {headers: headers});
+  var data = await res.json();
+  return (data.artifacts && data.artifacts[0]) || null;
+}
+async function downloadArtifactZip(owner, repo, headers, artifactId){
+  var res = await fetch(API+'/repos/'+owner+'/'+repo+'/actions/artifacts/'+artifactId+'/zip', {headers: headers});
+  if(!res.ok) throw new Error('Artifact download fail: '+res.status);
+  return await res.blob();
+}
+</script>
+</body>
+</html>
